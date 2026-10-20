@@ -1,2 +1,13 @@
+# Development-only host and tooling; not part of the published Mooncakes package.
+bridge/
+cmd/
+host/
+web/
+tools/
+docs/
+
+# Build output and dependency caches.
 **/_build/
 **/.mooncakes/
+/.work/
+**/pkg.generated.mbti

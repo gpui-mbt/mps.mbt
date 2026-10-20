@@ -44,11 +44,19 @@ jobs:
               throw new Error(`browser module is missing ${required}: ${names.join(", ")}`);
             }
           }
-          const { instance } = await WebAssembly.instantiate(module, {
-            spectest: { print_char: (c) => {} },
+          let printed = 0;
+          const instance = await WebAssembly.instantiate(module, {
+            spectest: {
+              print_char: () => {
+                printed += 1;
+              },
+            },
           });
           instance.exports.mps_session(0);
           instance.exports.mps_run();
+          if (printed === 0) {
+            throw new Error("the browser session printed no frames");
+          }
           console.log("browser module exports and runs");
           JS
       - name: Package preview
