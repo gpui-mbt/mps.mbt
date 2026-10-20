@@ -12,7 +12,14 @@ external mooncakes, no JavaScript or C FFI beyond the single
 > but the hydrostatic column does not yet build pressure; see
 > [docs/physics-status.md](docs/physics-status.md).
 
-![The browser viewer running one dam-break session](docs/images/browser.png)
+![The browser viewer after one session: the column has fallen under gravity and sits on the floor, because the kinematic demo has no pressure support yet](docs/images/browser.png)
+
+The picture is the honest present state: the deterministic demo *falls* rather
+than flows. Water that should stay in the column settles on the floor because
+`Mode::Kinematic` applies gravity without solving pressure. The pipeline behind
+it (scene, wasm export, FRAME streaming, Canvas rendering, chained sessions,
+byte-identical native/wasm output) is complete and gated in CI; the physics is
+not, see [docs/physics-status.md](docs/physics-status.md).
 
 ## What is here
 
