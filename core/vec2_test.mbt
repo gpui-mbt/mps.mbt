@@ -11,6 +11,8 @@ test "vec2 arithmetic" {
   inspect(a.len_sq(), content="25")
   inspect(a.len(), content="5")
   inspect(@core.dist2(a, b), content="20")
+  assert_true(@core.Vec2::new(1.0, 2.0) == @core.Vec2::new(1.0, 2.0))
+  assert_false(@core.Vec2::new(1.0, 2.0) == @core.Vec2::new(1.0, 3.0))
 }
 
 ///|
@@ -28,4 +30,5 @@ test "max_abs takes the largest component magnitude" {
   let a = @core.Vec2::new(-3.0, 2.0)
   let b = @core.Vec2::new(1.0, -7.0)
   inspect(@core.max_abs(a, b), content="7")
+  inspect(@core.max_abs(@core.Vec2::zero(), @core.Vec2::zero()), content="0")
 }

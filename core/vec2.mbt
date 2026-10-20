@@ -42,6 +42,14 @@ pub impl Neg for Vec2 with fn neg(self : Vec2) {
 }
 
 ///|
+pub extend Vec2 with Eq::{not_equal, equal}
+
+///|
+pub impl Eq for Vec2 with fn equal(self : Vec2, other : Vec2) {
+  self.x == other.x && self.y == other.y
+}
+
+///|
 pub fn Vec2::new(x : Double, y : Double) -> Vec2 {
   { x, y, }
 }
@@ -104,10 +112,19 @@ pub fn dist2(a : Vec2, b : Vec2) -> Double {
 }
 
 ///|
-/// Largest component magnitude out of two vectors.
-///
-/// The Verlet-list rebuild test compares per-particle displacement against a
-/// skin distance with this helper.
+/// Largest absolute component across `a` and `b`.
 pub fn max_abs(a : Vec2, b : Vec2) -> Double {
-  a.x.abs().max(b.x.abs()).max(a.y.abs().max(b.y.abs()))
+  max4(a.x.abs(), a.y.abs(), b.x.abs(), b.y.abs())
+}
+
+///|
+/// Maximum of four values.
+fn max4(a : Double, b : Double, c : Double, d : Double) -> Double {
+  let ab = if a < b { b } else { a }
+  let cd = if c < d { d } else { c }
+  if ab < cd {
+    cd
+  } else {
+    ab
+  }
 }
