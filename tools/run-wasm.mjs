@@ -18,5 +18,12 @@ const { instance } = await WebAssembly.instantiate(bytes, {
     print_char: (codePoint) => chunks.push(codePoint),
   },
 });
-instance.exports._start();
+// The browser module's entry is an export rather than `_start`; both shapes are
+// accepted so the runner works for either build.
+if (typeof instance.exports._start === "function") {
+  instance.exports._start();
+} else {
+  instance.exports.mps_session(0);
+  instance.exports.mps_run();
+}
 process.stdout.write(chunks.map((c) => String.fromCodePoint(c)).join(""));

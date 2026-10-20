@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Install MoonBit
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
@@ -19,5 +22,34 @@ jobs:
         run: moon fmt --check
       - name: Check native
         run: moon check --target native --deny-warn
-      - name: Unit tests
+      - name: Check wasm-gc
+        run: moon check --target wasm-gc --deny-warn
+      - name: Check js
+        run: moon check --target js --deny-warn
+      - name: Unit tests (native)
         run: moon test --target native
+      - name: Unit tests (js)
+        run: moon test --target js
+      - name: Cross-backend smoke (native vs wasm-gc)
+        run: sh tools/smoke.sh 60
+      - name: Validate the browser module exports
+        run: |
+          node --input-type=module <<'JS'
+          import { readFile } from "node:fs/promises";
+          const bytes = await readFile("_build/wasm-gc/release/build/bridge/bridge.wasm");
+          const module = new WebAssembly.Module(bytes);
+          const names = WebAssembly.Module.exports(module).map((e) => e.name);
+          for (const required of ["mps_session", "mps_run"]) {
+            if (!names.includes(required)) {
+              throw new Error(`browser module is missing ${required}: ${names.join(", ")}`);
+            }
+          }
+          const { instance } = await WebAssembly.instantiate(module, {
+            spectest: { print_char: (c) => {} },
+          });
+          instance.exports.mps_session(0);
+          instance.exports.mps_run();
+          console.log("browser module exports and runs");
+          JS
+      - name: Package preview
+        run: moon package --list
