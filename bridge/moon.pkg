@@ -2,6 +2,6 @@ import {
   "f4ah6o/mps/host/browser",
 }
 
-pkgtype(kind: "executable")
+pkgtype(kind: "foreign_library")
 
 supported_targets = "+wasm-gc"

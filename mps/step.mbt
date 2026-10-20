@@ -139,11 +139,14 @@ pub fn Simulation::step(self : Simulation) -> StepResult {
   let params = self.params
   let state = self.scene.state
   let n = state.x.length()
-  let list = @core.NeighborList::build(
-    positions_of(state),
-    params.radius,
-    params.skin * params.spacing,
-  )
+  // The kinematic model has no interaction terms, so it needs no neighbour
+  // list at all; the MPS model refreshes the cached list in place.
+  let list = if params.mode is Mode::Mps {
+    let _ = self.list.refresh(positions_of(state), params.radius)
+    self.list
+  } else {
+    self.list
+  }
   let mut max_speed = 0.0
   for i = 0; i < n; i = i + 1 {
     max_speed = max_speed.max(state.vx[i].abs().max(state.vy[i].abs()))

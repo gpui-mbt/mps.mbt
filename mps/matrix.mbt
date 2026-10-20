@@ -75,6 +75,20 @@ pub fn finite(v : Double) -> Bool {
 }
 
 ///|
+/// Jacobi preconditioner step: `r / |diag|`, falling back to `r` when the
+/// diagonal is zero.
+///
+/// The sign of the diagonal is not assumed: the MPS pressure operator is
+/// negated to be positive definite, so its rows can carry either sign.
+fn jacobi(diag : Double, value : Double) -> Double {
+  if diag == 0.0 {
+    value
+  } else {
+    value / diag.abs()
+  }
+}
+
+///|
 /// `y = A x` restricted to the active rows and columns, so inactive entries of
 /// `x` or `y` are never read or written.
 pub fn SparseMatrix::mul_active(
@@ -165,11 +179,7 @@ pub fn conjugate_gradient_masked(
   let mut rz = 0.0
   for i = 0; i < n; i = i + 1 {
     if active[i] {
-      if a.diag[i] > 0.0 {
-        z[i] = r[i] / a.diag[i]
-      } else {
-        z[i] = r[i]
-      }
+      z[i] = jacobi(a.diag[i], r[i])
       p[i] = z[i]
       rz = rz + r[i] * z[i]
     }
@@ -201,11 +211,7 @@ pub fn conjugate_gradient_masked(
     let mut rz_next = 0.0
     for i = 0; i < n; i = i + 1 {
       if active[i] {
-        if a.diag[i] > 0.0 {
-          z[i] = r[i] / a.diag[i]
-        } else {
-          z[i] = r[i]
-        }
+        z[i] = jacobi(a.diag[i], r[i])
         rz_next = rz_next + r[i] * z[i]
       }
     }

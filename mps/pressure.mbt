@@ -90,10 +90,20 @@ pub fn Simulation::solve_pressure(
   for i = 0; i < n; i = i + 1 {
     self.pressure_next[i] = 0.0
   }
-  let a = SparseMatrix::from_rows(rows, diag)
+  let base_diag = diag.copy()
   let mut cg_max = 0
   let mut converged = true
   for it = 0; it < params.icp_iterations; it = it + 1 {
+    // Each ICP pass rebuilds the diagonal from the unpinned rows: a pinned
+    // particle is a Dirichlet zero-pressure point and must not carry a stale
+    // coefficient into the next solve.
+    let pass_diag = Array::make(n, 0.0)
+    for i = 0; i < n; i = i + 1 {
+      if active[i] {
+        pass_diag[i] = base_diag[i]
+      }
+    }
+    let a = SparseMatrix::from_rows(rows, pass_diag)
     let cg = conjugate_gradient_masked(
       a,
       rhs,

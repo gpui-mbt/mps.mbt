@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>mps.mbt — dam break</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230b1018'/%3E%3Cpath d='M3 6h5v7H3z' fill='%234fc3f7'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>mps.mbt — dam break</h1>
+        <p class="subtitle">MoonBit particle fluid, running as WebAssembly</p>
+      </header>
+      <canvas id="canvas" width="960" height="600" aria-label="dam break simulation"></canvas>
+      <section class="status" aria-live="polite">
+        <span data-field="time">t 0.000 s</span>
+        <span data-field="step">step 0</span>
+        <span data-field="particles">0 particles</span>
+        <span data-field="speed">vmax 0.000 m/s</span>
+        <span data-field="status">starting</span>
+      </section>
+      <p id="error" class="error" hidden></p>
+    </main>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>
