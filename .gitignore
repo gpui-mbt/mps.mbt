@@ -5,3 +5,5 @@
 /target/
 /bisect.coverage
 /coverage/
+/.work/
+/**/pkg.generated.mbti

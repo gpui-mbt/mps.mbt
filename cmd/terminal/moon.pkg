@@ -1,0 +1,8 @@
+import {
+  "f4ah6o/mps/host/native",
+  "moonbitlang/core/env",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "+native"

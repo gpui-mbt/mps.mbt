@@ -1,0 +1,9 @@
+import {
+  "f4ah6o/mps/core",
+  "f4ah6o/mps/mps",
+  "f4ah6o/mps/render",
+}
+
+supported_targets = "+native"
+
+warnings = "-test_unqualified_package"

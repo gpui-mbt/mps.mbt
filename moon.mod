@@ -11,3 +11,9 @@ license = "MIT"
 keywords = [ "moonbit", "mps", "fluid-simulation", "particle-method", "wasm" ]
 
 description = "Moving Particle Semi-implicit (MPS) fluid simulation with a dam-break demo for native and the browser"
+
+preferred_target = "native"
+
+import {
+  "moonbitlang/x@0.5.5",
+}
