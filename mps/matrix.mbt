@@ -89,9 +89,11 @@ pub fn SparseMatrix::mul_active(
       let mut acc = self.diag[i] * x[i]
       for k = self.start[i]; k < self.start[i + 1]; k = k + 1 {
         let j = self.cols[k]
-        if active[j] {
-          acc = acc + self.values[k] * x[j]
+        // A column that is not an unknown carries p = 0 and drops out.
+        if !active[j] {
+          continue
         }
+        acc = acc + self.values[k] * x[j]
       }
       y[i] = acc
     }
@@ -160,20 +162,32 @@ pub fn conjugate_gradient_masked(
       r[i] = b[i]
     }
   }
+  let mut rz = 0.0
   for i = 0; i < n; i = i + 1 {
-    apply_preconditioner(a, r, z, active, i)
+    if active[i] {
+      if a.diag[i] > 0.0 {
+        z[i] = r[i] / a.diag[i]
+      } else {
+        z[i] = r[i]
+      }
+      p[i] = z[i]
+      rz = rz + r[i] * z[i]
+    }
   }
-  for i = 0; i < n; i = i + 1 {
-    p[i] = z[i]
-  }
-  let mut rz = masked_dot(r, z, active)
   let target = tolerance * masked_norm(b, active)
+
   for it = 0; it < max_iter; it = it + 1 {
-    if masked_norm(r, active) <= target {
+    let res = masked_norm(r, active)
+    if res <= target {
       return it
     }
     a.mul_active(p, ap, active)
-    let pap = masked_dot(p, ap, active)
+    let mut pap = 0.0
+    for i = 0; i < n; i = i + 1 {
+      if active[i] {
+        pap = pap + p[i] * ap[i]
+      }
+    }
     if !(pap > 0.0) || !finite(pap) || !(rz > 0.0) {
       return it
     }
@@ -184,10 +198,17 @@ pub fn conjugate_gradient_masked(
         r[i] = r[i] - alpha * ap[i]
       }
     }
+    let mut rz_next = 0.0
     for i = 0; i < n; i = i + 1 {
-      apply_preconditioner(a, r, z, active, i)
+      if active[i] {
+        if a.diag[i] > 0.0 {
+          z[i] = r[i] / a.diag[i]
+        } else {
+          z[i] = r[i]
+        }
+        rz_next = rz_next + r[i] * z[i]
+      }
     }
-    let rz_next = masked_dot(r, z, active)
     if !finite(rz_next) {
       return it + 1
     }
@@ -200,21 +221,6 @@ pub fn conjugate_gradient_masked(
     }
   }
   max_iter
-}
-
-///|
-fn apply_preconditioner(
-  a : SparseMatrix,
-  r : Array[Double],
-  z : Array[Double],
-  active : Array[Bool],
-  i : Int32,
-) -> Unit {
-  if active[i] {
-    z[i] = if a.diag[i] > 0.0 { r[i] / a.diag[i] } else { r[i] }
-  } else {
-    z[i] = 0.0
-  }
 }
 
 ///|

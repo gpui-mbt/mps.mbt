@@ -17,23 +17,22 @@ pub(all) struct PressureSolve {
 /// Solves the pressure Poisson equation on the predicted configuration.
 ///
 /// The discrete operators follow Koshizuka & Oka (1996) with `d = 2`,
-/// `w_ij = re/r - 1`, `lambda_i = sum_j r_ij² w_ij` and `n0` the reference
-/// density measured on the initial configuration:
+/// `w_ij = re/r - 1`, `lambda_i = sum_j r_ij² w_ij` and the reference density
+/// `n0`:
 ///
 /// - Laplacian of `i`: `2d (sum_j w_ij - lambda_i) / (n0 lambda_i)`
 /// - Laplacian of `j != i`: `2d w_ij / (n0 lambda_i)`
-/// - right-hand side: `-(rho0 / dt²) (n*_i - n0) / n0`
+/// - right-hand side: `(rho0 / dt²) (n*_i - n0) / n0` for the negated system
+///   `L = -[grad²]`
 ///
-/// The row sum is what produces the free-surface and wall behaviour: a fluid
-/// particle whose neighbourhood is incomplete has a diagonal that does not
-/// cancel its off-diagonal part, so its pressure is pulled towards zero even
-/// though only fluid particles are unknowns. Wall and dummy-wall particles
-/// enter `sum_w` and `lambda` but never carry a pressure.
+/// Walls and dummy walls take part in `sum_w` and `lambda` but are not
+/// unknowns; their contribution to the diagonal is what gives a fluid
+/// particle next to a wall or a free surface a pressure that is pulled towards
+/// zero, the physical boundary condition.
 ///
-/// The system is negated (`L = -[grad²]`) to be symmetric positive definite,
-/// and `p >= 0` is enforced with ICP: a particle whose pressure came out
-/// negative is fixed at zero and removed from the unknowns, and the system is
-/// solved again, at most `icp_iterations` times.
+/// Non-negative pressure is enforced by ICP: a particle whose pressure came
+/// out negative is fixed at zero and removed from the unknowns, and the system
+/// is solved again, at most `icp_iterations` times.
 pub fn Simulation::solve_pressure(
   self : Simulation,
   dt : Double,
@@ -54,9 +53,10 @@ pub fn Simulation::solve_pressure(
   let active = Array::make(n, false)
   for i = 0; i < n; i = i + 1 {
     if state.kind[i] is Fluid {
+      let neighbors = grid.neighbors_within(positions, i, re)
       let mut sum_w = 0.0
       let mut lambda = 0.0
-      for j in grid.neighbors_within(positions, i, re) {
+      for j in neighbors {
         let dx = state.x[j] - state.x[i]
         let dy = state.y[j] - state.y[i]
         let r2 = dx * dx + dy * dy
@@ -69,12 +69,16 @@ pub fn Simulation::solve_pressure(
       if lambda > 0.0 {
         let coeff = 2.0 * d / (n0 * lambda)
         let keep : Array[(Int32, Double)] = []
-        for j in grid.neighbors_within(positions, i, re) {
-          let dx = state.x[j] - state.x[i]
-          let dy = state.y[j] - state.y[i]
-          let r2 = dx * dx + dy * dy
-          if r2 > 0.0 && r2 < re2 && state.kind[j] is Fluid {
-            keep.push((j, -coeff * (re / r2.sqrt() - 1.0)))
+        for j in neighbors {
+          if state.kind[j] is Fluid {
+            let dx = state.x[j] - state.x[i]
+            let dy = state.y[j] - state.y[i]
+            let r2 = dx * dx + dy * dy
+            if r2 > 0.0 && r2 < re2 {
+              // Negated off-diagonal coefficient of the positive definite
+              // operator L = -[grad²].
+              keep.push((j, -coeff * (re / r2.sqrt() - 1.0)))
+            }
           }
         }
         rows[i] = keep
@@ -128,8 +132,8 @@ pub fn Simulation::solve_pressure(
 /// `grad p_i = (d / (n0 lambda_i)) sum_{j != i} (p_j - p_hat_i) (x_j - x_i) w_ij / r_ij²`
 ///
 /// with `p_hat_i` the pressure of the previous step. A neighbour that is not a
-/// fluid particle contributes `p_j = 0`, which is the wall and free-surface
-/// condition. The correction is `v = v* - dt / rho0 * grad p`.
+/// fluid particle contributes `p_j = 0`, the wall and free-surface condition.
+/// The correction is `v = v* - dt / rho0 * grad p`.
 pub fn Simulation::apply_pressure_gradient(
   self : Simulation,
   dt : Double,
