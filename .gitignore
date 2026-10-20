@@ -3,3 +3,5 @@
 /web/main.wasm
 /node_modules/
 /target/
+/bisect.coverage
+/coverage/
