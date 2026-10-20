@@ -139,9 +139,8 @@ pub fn Simulation::step(self : Simulation) -> StepResult {
   let params = self.params
   let state = self.scene.state
   let n = state.x.length()
-  let predicted_positions = positions_of(state)
   let list = @core.NeighborList::build(
-    predicted_positions,
+    positions_of(state),
     params.radius,
     params.skin * params.spacing,
   )
@@ -159,6 +158,24 @@ pub fn Simulation::step(self : Simulation) -> StepResult {
     state.x[i] = state.x[i] + self.vx_star[i] * dt
     state.y[i] = state.y[i] + self.vy_star[i] * dt
   }
+  if params.mode is Mode::Kinematic {
+    // Free-fall demo: the predicted velocity is the new velocity, so the fluid
+    // falls and spreads under gravity alone. No solve, no relaxation, no
+    // density feedback; the result depends only on the state and `dt`.
+    for i = 0; i < n; i = i + 1 {
+      if state.kind[i] is Fluid {
+        state.vx[i] = self.vx_star[i]
+        state.vy[i] = self.vy_star[i]
+      }
+    }
+    clamp_to_domain(state, self.domain, params.spacing)
+    state.time = state.time + dt
+    state.step = state.step + 1
+    if has_non_finite(state) {
+      return { status: StepStatus::Diverged, dt, cg_iterations: 0, }
+    }
+    return { status: StepStatus::Ok, dt, cg_iterations: 0, }
+  }
   // Every interaction model of this step reads the same predicted-velocity
   // neighbourhood; `list` is rebuilt from scratch, so the step is a pure
   // function of the state and the result is identical on every backend.
@@ -168,7 +185,7 @@ pub fn Simulation::step(self : Simulation) -> StepResult {
   }
   let solve = self.solve_pressure(dt, list)
   self.apply_pressure_gradient(dt, list)
-  for k = 0; k < params.relaxation_iterations; k = k + 1 {
+  for k = 0; k < 2; k = k + 1 {
     update_density(state, list, params.re2(), self.density_scratch)
     relax_density(
       state,

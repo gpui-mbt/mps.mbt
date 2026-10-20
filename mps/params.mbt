@@ -1,10 +1,23 @@
 ///|
-/// Physical and numerical parameters of an MPS simulation.
+/// What the integration of one step should model.
+pub(all) enum Mode {
+  /// Full MPS semi-implicit step: viscosity, gravity, pressure Poisson solve,
+  /// gradient correction and the density relaxation safety net.
+  Mps
+  /// Gravity, advection and wall clamping only, without the pressure solve.
+  ///
+  /// This is the deterministic free-fall demo mode the native and browser
+  /// hosts use while the pressure model is still under development; the motion
+  /// it produces is what the renderers are checked against.
+  Kinematic
+}
+
+///|
+/// Physical and numerical parameters of the simulation.
 ///
-/// Lengths are metres, times seconds, density kilograms per cubic metre. The
-/// parameter set follows the MPS dam-break literature (Koshizuka & Oka 1996):
-/// an interaction radius of 4 particle spacings, a `re/r - 1` kernel, and
-/// initial density calibrated on the initial packing.
+/// Lengths are metres, times seconds, density kilograms per cubic metre. The MPS
+/// parameter set follows the dam-break literature (Koshizuka & Oka 1996): an
+/// interaction radius of four particle spacings and the `re/r - 1` kernel.
 pub(all) struct Params {
   /// Particle spacing `l0`.
   spacing : Double
@@ -16,7 +29,7 @@ pub(all) struct Params {
   viscosity : Double
   /// Gravitational acceleration magnitude.
   gravity : Double
-  /// Initial particle speed limit used by the CFL condition.
+  /// Courant number for the time step.
   cfl : Double
   /// Upper bound on the time step.
   dt_max : Double
@@ -24,9 +37,6 @@ pub(all) struct Params {
   dt_min : Double
   /// Maximum iterations of the pressure Poisson CG per step.
   cg_iterations : Int32
-  /// Iteration cap of the incompressibility relaxation applied after the
-  /// pressure correction (0 disables it).
-  relaxation_iterations : Int32
   /// Relative CG residual that counts as converged.
   cg_tolerance : Double
   /// Maximum ICP iterations for the non-negative pressure constraint.
@@ -35,11 +45,19 @@ pub(all) struct Params {
   skin : Double
   /// Number of wall particle rings placed outside the domain.
   wall_layers : Int32
+  /// Step model.
+  mode : Mode
 }
 
 ///|
-/// Default parameters for a dam break with `l0 = 1e-2 m`.
+/// Default parameters for a dam break with `l0 = 1e-2 m` in kinematic mode.
 pub fn Params::default() -> Params {
+  Params::kinematic()
+}
+
+///|
+/// Parameters for the deterministic kinematic demo.
+pub fn Params::kinematic() -> Params {
   {
     spacing: 0.01,
     radius: 0.04,
@@ -50,11 +68,34 @@ pub fn Params::default() -> Params {
     dt_max: 0.002,
     dt_min: 0.00001,
     cg_iterations: 200,
-    relaxation_iterations: 0,
     cg_tolerance: 1.0e-6,
     icp_iterations: 3,
     skin: 0.3,
     wall_layers: 2,
+    mode: Mode::Kinematic,
+  }
+}
+
+///|
+/// Parameters for the full MPS step; the pressure model is still experimental,
+/// see `docs/physics-status.md`.
+pub fn Params::mps() -> Params {
+  let base = Params::kinematic()
+  {
+    spacing: base.spacing,
+    radius: base.radius,
+    density: base.density,
+    viscosity: base.viscosity,
+    gravity: base.gravity,
+    cfl: base.cfl,
+    dt_max: base.dt_max,
+    dt_min: base.dt_min,
+    cg_iterations: base.cg_iterations,
+    cg_tolerance: base.cg_tolerance,
+    icp_iterations: base.icp_iterations,
+    skin: base.skin,
+    wall_layers: base.wall_layers,
+    mode: Mode::Mps,
   }
 }
 
