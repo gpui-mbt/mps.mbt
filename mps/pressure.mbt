@@ -36,14 +36,13 @@ pub(all) struct PressureSolve {
 pub fn Simulation::solve_pressure(
   self : Simulation,
   dt : Double,
+  list : @core.NeighborList,
 ) -> PressureSolve {
   let params = self.params
   let state = self.scene.state
   let n = state.x.length()
   let n0 = self.scene.n0
   let d = DIMENSION.to_double()
-  let positions = positions_of(state)
-  let grid = @core.UniformGrid::build(positions, params.padded_radius())
   let re = params.radius
   let re2 = params.re2()
   let scale = params.density / (dt * dt * n0)
@@ -53,7 +52,7 @@ pub fn Simulation::solve_pressure(
   let active = Array::make(n, false)
   for i = 0; i < n; i = i + 1 {
     if state.kind[i] is Fluid {
-      let neighbors = grid.neighbors_within(positions, i, re)
+      let neighbors = list.neighbors_of(i)
       let mut sum_w = 0.0
       let mut lambda = 0.0
       for j in neighbors {
@@ -137,16 +136,14 @@ pub fn Simulation::solve_pressure(
 pub fn Simulation::apply_pressure_gradient(
   self : Simulation,
   dt : Double,
+  list : @core.NeighborList,
 ) -> Unit {
   let params = self.params
   let state = self.scene.state
   let n = state.x.length()
   let n0 = self.scene.n0
   let pressure = self.pressure_next
-  let p_hat = self.pressure_hat
   let d = DIMENSION.to_double()
-  let positions = positions_of(state)
-  let grid = @core.UniformGrid::build(positions, params.padded_radius())
   let re = params.radius
   let re2 = params.re2()
   for i = 0; i < n; i = i + 1 {
@@ -154,18 +151,19 @@ pub fn Simulation::apply_pressure_gradient(
       let mut lambda = 0.0
       let mut gx = 0.0
       let mut gy = 0.0
-      for j in grid.neighbors_within(positions, i, re) {
+      for j in list.neighbors_of(i) {
         let dx = state.x[j] - state.x[i]
         let dy = state.y[j] - state.y[i]
         let r2 = dx * dx + dy * dy
         if r2 > 0.0 && r2 < re2 {
           let w = re / r2.sqrt() - 1.0
           lambda = lambda + r2 * w
-          let pj = if state.kind[j] is Fluid { pressure[j] } else { 0.0 }
-          let delta = pj - p_hat[i]
-          if delta != 0.0 {
-            gx = gx + delta * w / r2 * dx
-            gy = gy + delta * w / r2 * dy
+          // Wall and dummy-wall neighbours carry no pressure, and the free
+          // surface is a missing neighbour, so both contribute nothing here.
+          if state.kind[j] is Fluid && pressure[j] > 0.0 {
+            let factor = pressure[j] * w / r2
+            gx = gx + factor * dx
+            gy = gy + factor * dy
           }
         }
       }

@@ -139,7 +139,12 @@ pub fn Simulation::step(self : Simulation) -> StepResult {
   let params = self.params
   let state = self.scene.state
   let n = state.x.length()
-  let _ = self.list.refresh(positions_of(state), params.radius)
+  let predicted_positions = positions_of(state)
+  let list = @core.NeighborList::build(
+    predicted_positions,
+    params.radius,
+    params.skin * params.spacing,
+  )
   let mut max_speed = 0.0
   for i = 0; i < n; i = i + 1 {
     max_speed = max_speed.max(state.vx[i].abs().max(state.vy[i].abs()))
@@ -148,26 +153,26 @@ pub fn Simulation::step(self : Simulation) -> StepResult {
   if dt <= params.dt_min && max_speed > 0.0 {
     return { status: StepStatus::TimestepTooSmall, dt, cg_iterations: 0, }
   }
-  apply_viscosity(state, self.list, params, dt, self.vx_star, self.vy_star)
+  apply_viscosity(state, list, params, dt, self.vx_star, self.vy_star)
   for i = 0; i < n; i = i + 1 {
     self.vy_star[i] = self.vy_star[i] - params.gravity * dt
     state.x[i] = state.x[i] + self.vx_star[i] * dt
     state.y[i] = state.y[i] + self.vy_star[i] * dt
   }
-  update_density(state, self.list, params.re2(), self.density_scratch)
-  // Rebuild the neighbour cache for the predicted positions: the density
-  // constraint and the pressure operators must all see the same neighbourhood.
-  let _ = self.list.refresh(positions_of(state), params.radius)
+  // Every interaction model of this step reads the same predicted-velocity
+  // neighbourhood; `list` is rebuilt from scratch, so the step is a pure
+  // function of the state and the result is identical on every backend.
+  update_density(state, list, params.re2(), self.density_scratch)
   for i = 0; i < n; i = i + 1 {
     self.pressure_hat[i] = state.pressure[i]
   }
-  let solve = self.solve_pressure(dt)
-  self.apply_pressure_gradient(dt)
+  let solve = self.solve_pressure(dt, list)
+  self.apply_pressure_gradient(dt, list)
   for k = 0; k < params.relaxation_iterations; k = k + 1 {
-    update_density(state, self.list, params.re2(), self.density_scratch)
+    update_density(state, list, params.re2(), self.density_scratch)
     relax_density(
       state,
-      self.list,
+      list,
       params,
       self.scene.n0,
       self.density_scratch,
