@@ -1,0 +1,5 @@
+/_build/
+/.mooncakes/
+/web/main.wasm
+/node_modules/
+/target/

@@ -1,0 +1,7 @@
+import {
+  "f4ah6o/mps/core",
+}
+
+pkgtype(kind: "executable")
+
+supported_targets = "+native+wasm-gc+js"
